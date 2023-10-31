@@ -1,0 +1,10 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = CpuLib
+  FILE_GUID = acb6fb2e-a1eb-4c5c-88b4-2406afc035d6
+  MODULE_TYPE = BASE
+  VERSION_STRING = 0.1
+  LIBRARY_CLASS = CpuLib
+
+[Sources.ARC2]
+  CpuLib.c

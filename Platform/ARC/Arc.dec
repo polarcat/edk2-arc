@@ -1,0 +1,22 @@
+[Defines]
+  DEC_SPECIFICATION = 0x00010005
+  PACKAGE_NAME = Arc
+  PACKAGE_GUID = 1ab72606-04de-4d65-a97c-e53b413fba70
+  PACKAGE_VERSION = 0.1
+
+[Includes]
+  Include
+
+[Guids]
+  gArcTokens = {0x679fa664, 0x9709, 0x4b64, {0x9a, 0xd8, 0xc4, 0x16, 0x16, 0x19, 0xac, 0xd6}}
+
+[PcdsFixedAtBuild]
+  # Initial values. They will be set by chip specific fdf.
+  gArcTokens.PcdSecFvBase|0|UINT64|1
+  gArcTokens.PcdSecFvSize|0|UINT32|2
+
+  gArcTokens.PcdBootFvBase|0|UINT64|3
+  gArcTokens.PcdBootFvSize|0|UINT32|4
+
+  gArcTokens.PcdPeiTemporaryRamBase|0|UINT32|5
+  gArcTokens.PcdPeiTemporaryRamSize|0|UINT32|6

@@ -1,0 +1,17 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = UtilsLib
+  FILE_GUID = f4fb883d-8138-4f29-bb0c-c574e9312c74
+  MODULE_TYPE = BASE
+  VERSION_STRING = 0.1
+  LIBRARY_CLASS = UtilsLib
+
+[Sources]
+  UtilsLib.c
+  Platform/ARC/Include/Library/UtilsLib.h
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib

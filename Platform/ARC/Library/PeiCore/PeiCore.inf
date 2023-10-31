@@ -1,0 +1,24 @@
+[Defines]
+  INF_VERSION = 0x0001001b
+  BASE_NAME = PeiCore
+  FILE_GUID = 6cf08b39-f06b-4e8e-93cc-f7ad7340a2c2
+  MODULE_TYPE = PEI_CORE
+  VERSION_STRING = 0.1
+  ENTRY_POINT = PeiCoreMain
+
+[BuildOptions.ARC2]
+  GCC:*_*_*_CC_FLAGS = -fpie
+  GCC:*_*_*_DLINK_FLAGS = -fpie
+
+[Sources]
+  PeiCoreMain.c
+
+[Packages]
+  Platform/ARC/Arc.dec
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  PrintLib
+  SerialPortLib
+  UtilsLib

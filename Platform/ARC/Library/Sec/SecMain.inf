@@ -1,0 +1,34 @@
+[Defines]
+  INF_VERSION = 0x0001001b
+  BASE_NAME = SecMain
+  FILE_GUID = 1f2d6358-993b-493b-a2c7-22b4b370bfee
+  MODULE_TYPE = SEC
+  VERSION_STRING = 0.1
+  ENTRY_POINT = SecMain
+
+[Sources]
+  SecMain.h
+  SecMain.c
+
+[Sources.ARC2]
+  Arc2/SecEntry.S
+
+[Packages]
+  Platform/ARC/Arc.dec
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  PrintLib
+  SerialPortLib
+  UtilsLib
+
+[Guids]
+  gEfiFirmwareFileSystem2Guid
+
+[FixedPcd]
+  gArcTokens.PcdSecFvBase
+  gArcTokens.PcdBootFvBase
+  gArcTokens.PcdBootFvSize
+  gArcTokens.PcdPeiTemporaryRamBase
+  gArcTokens.PcdPeiTemporaryRamSize

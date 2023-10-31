@@ -1,0 +1,65 @@
+[Defines]
+  DEFINE FD_BASE_ADDR = 0x1c000000
+  DEFINE FD_SIZE = 0x400000
+  DEFINE FD_NUM_BLOCKS = 0x400
+  DEFINE FD_BLOCK_SIZE = 0x1000
+
+  DEFINE BOOT_FV_OFFSET = 0x0
+  DEFINE BOOT_FV_SIZE = 0x20000
+
+  DEFINE MAIN_FV_OFFSET = 0x10000
+  DEFINE MAIN_FV_SIZE = 0x40000
+
+[FD.QEMU-ARC]
+  BaseAddress = $(FD_BASE_ADDR)
+  Size = $(FD_SIZE)
+  ErasePolarity = 1
+  BlockSize = $(FD_BLOCK_SIZE)
+  NumBlocks = $(FD_NUM_BLOCKS)
+
+  $(BOOT_FV_OFFSET)|$(BOOT_FV_SIZE)
+  # FIXME: shortcut declaration causes compile time error
+  SET gArcTokens.PcdBootFvBase = $(BOOT_FV_OFFSET)
+  SET gArcTokens.PcdBootFvSize = $(BOOT_FV_SIZE)
+  FV = BootFv
+
+#  $(BOOT_FV_OFFSET)|$(BOOT_FV_SIZE)
+#  gArcTokens.PcdBootFvBase|gArcTokens.PcdBootFvSize
+#  FV = BootFv
+
+[FV.BootFv]
+  FvNameGuid = 8c8ce578-8a3d-4f1c-9935-896185c32dd3
+  BlockSize = $(FD_BLOCK_SIZE)
+  FvAlignment = 16
+  ERASE_POLARITY = 1
+  MEMORY_MAPPED = TRUE
+
+  INF Platform/ARC/Library/Sec/SecMain.inf
+  INF Platform/ARC/Library/PeiCore/PeiCore.inf
+#  INF MdePkg/Library/PeiCoreEntryPoint/PeiCoreEntryPoint.inf
+#  INF MdeModulePkg/Core/Pei/PeiMain.inf
+#  INF MdeModulePkg/Universal/PCD/Pei/Pcd.inf
+#  INF MdeModulePkg/Core/DxeIplPeim/DxeIpl.inf
+
+#[FV.BootFv]
+#  FvNameGuid = 8711980f-11e4-4f2f-966a-a7b304a3fb25
+  # EFI_FIRMWARE_FILE_SYSTEM2_GUID
+#  FvNameGuid = 8c8ce578-8a3d-4f1c-9935-896185c32dd3
+#  BlockSize = $(FD_BLOCK_SIZE)
+#  FvAlignment = 16
+#  ERASE_POLARITY = 1
+#  MEMORY_MAPPED = TRUE
+
+#  INF MdeModulePkg/Core/Pei/PeiMain.inf
+
+[Rule.Common.SEC]
+  FILE SEC = $(NAMED_GUID) Fixed {
+    TE TE Align = Auto $(INF_OUTPUT)/$(MODULE_NAME).efi
+    UI STRING ="$(MODULE_NAME)" Optional
+  }
+
+[Rule.Common.PEI_CORE]
+  FILE PEI_CORE = $(NAMED_GUID) {
+    TE TE Align= Auto $(INF_OUTPUT)/$(MODULE_NAME).efi
+    UI STRING ="$(MODULE_NAME)" Optional
+  }

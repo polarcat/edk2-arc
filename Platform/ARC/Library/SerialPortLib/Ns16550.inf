@@ -1,0 +1,33 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = Ns16550
+  FILE_GUID = f4fb883d-8138-4f29-bb0c-c574e9312c74
+  MODULE_TYPE = BASE
+  VERSION_STRING = 1.1
+  LIBRARY_CLASS = SerialPortLib
+
+[Packages]
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  IoLib
+  PcdLib
+
+[Sources]
+  Ns16550.c
+
+[Pcd]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterAccessWidth|32
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseMmio|TRUE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialUseHardwareFlowControl|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialDetectCable|FALSE
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|0xf0005000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialBaudRate|115200
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialLineControl|0x03 # 8N1
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialClockRate|33333333
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialFifoControl
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialExtendedTxFifoSize
+  gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterStride|4
