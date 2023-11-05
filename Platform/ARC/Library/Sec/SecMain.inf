@@ -7,7 +7,6 @@
   ENTRY_POINT = SecMain
 
 [Sources]
-  SecMain.h
   SecMain.c
 
 [Sources.ARC2]

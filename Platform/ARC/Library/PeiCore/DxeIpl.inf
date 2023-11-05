@@ -1,0 +1,28 @@
+[Defines]
+  INF_VERSION = 0x0001001b
+  BASE_NAME = DxeIpl
+  FILE_GUID = 56fc1539-9ab2-4951-b51d-bd61fd8066d9
+  MODULE_TYPE = PEIM
+  VERSION_STRING = 1.0
+  ENTRY_POINT = DxeIplInit
+
+[Sources]
+  DxeIpl.c
+
+[Packages]
+  Platform/ARC/Arc.dec
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  PrintLib
+  SerialPortLib
+  UtilsLib
+  PeimEntryPoint
+
+[Ppis]
+  gEfiDxeIplPpiGuid
+
+[Depex]
+  FALSE

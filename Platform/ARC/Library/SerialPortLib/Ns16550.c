@@ -288,7 +288,6 @@ SerialPortWrite(
 
   if (Bytes == 0) {
     SerialPortFlush(Base);
-    SerialPortWaitWritable(Base);
     return 0;
   }
 

@@ -6,19 +6,22 @@
   VERSION_STRING = 0.1
   ENTRY_POINT = PeiCoreMain
 
-[BuildOptions.ARC2]
-  GCC:*_*_*_CC_FLAGS = -fpie
-  GCC:*_*_*_DLINK_FLAGS = -fpie
-
 [Sources]
   PeiCoreMain.c
+  PeiServices.c
 
 [Packages]
   Platform/ARC/Arc.dec
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
 
 [LibraryClasses]
   BaseLib
   PrintLib
   SerialPortLib
   UtilsLib
+  PeiServicesTablePointerLib
+  PeiCoreEntryPoint
+
+[FixedPcd]
+  gArcTokens.PcdBootFvBase

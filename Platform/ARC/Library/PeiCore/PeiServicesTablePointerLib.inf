@@ -1,0 +1,20 @@
+[Defines]
+  INF_VERSION = 0x0001001b
+  BASE_NAME = PeiServicesTablePointerLib
+  FILE_GUID = 956b764d-eeb0-451e-bce5-bd2392641db2
+  MODULE_TYPE = PEIM
+  VERSION_STRING = 1.0
+  LIBRARY_CLASS = PeiServicesTablePointerLib|PEIM PEI_CORE SEC
+
+[Sources]
+  PeiServicesTablePointerLib.c
+
+[Packages]
+  Platform/ARC/Arc.dec
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  PrintLib
+  SerialPortLib
+  UtilsLib

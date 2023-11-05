@@ -1,0 +1,23 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = CpuSync
+  MODULE_UNI_FILE = CpuSync
+  FILE_GUID = FC9990DF-C5FF-44cf-8799-CBB45B577F87
+  MODULE_TYPE = BASE
+  VERSION_STRING = 0.1
+  LIBRARY_CLASS = SynchronizationLib
+
+[Sources]
+  CpuSync.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  PcdLib
+  TimerLib
+  DebugLib
+  BaseMemoryLib
+
+[Pcd]
+  gEfiMdePkgTokenSpaceGuid.PcdSpinLockTimeout  ## SOMETIMES_CONSUMES

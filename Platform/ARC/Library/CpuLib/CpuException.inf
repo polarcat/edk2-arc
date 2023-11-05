@@ -1,0 +1,14 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = DxeException
+  FILE_GUID = B6E9835A-EDCF-4748-98A8-27D3C722E02D
+  MODULE_TYPE = DXE_DRIVER
+  VERSION_STRING = 0.1
+  LIBRARY_CLASS = CpuExceptionHandlerLib|DXE_CORE DXE_DRIVER UEFI_APPLICATION
+
+[Sources]
+  CpuException.c
+
+[Packages]
+  Platform/ARC/Arc.dec
+  MdePkg/MdePkg.dec

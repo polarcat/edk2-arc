@@ -12,9 +12,6 @@
   BaseMemoryLib | MdePkg/Library/BaseMemoryLib/BaseMemoryLib.inf
   DebugLib|MdePkg/Library/BaseDebugLibNull/BaseDebugLibNull.inf
   PrintLib | MdePkg/Library/BasePrintLib/BasePrintLib.inf
-  PeCoffLib | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
-  PeCoffGetEntryPointLib | MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
-  PeCoffExtraActionLib | MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
   PcdLib | MdePkg/Library/BasePcdLibNull/BasePcdLibNull.inf
   RegisterFilterLib | MdePkg/Library/RegisterFilterLibNull/RegisterFilterLibNull.inf
   IoLib | MdePkg/Library/BaseIoLibIntrinsic/BaseIoLibIntrinsic.inf
@@ -22,19 +19,48 @@
   UtilsLib | Platform/ARC/Library/UtilsLib/UtilsLib.inf
 
 [LibraryClasses.common.PEI_CORE]
-  ReportStatusCodeLib | MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
-  PeiServicesLib | MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
-  PerformanceLib | MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
-  #PerformanceLib | MdeModulePkg/Library/PeiPerformanceLib/PeiPerformanceLib.inf
-  HobLib | MdePkg/Library/PeiHobLib/PeiHobLib.inf
+  PeiServicesTablePointerLib | Platform/ARC/Library/PeiCore/PeiServicesTablePointerLib.inf
   PeiCoreEntryPoint | MdePkg/Library/PeiCoreEntryPoint/PeiCoreEntryPoint.inf
-  MemoryAllocationLib | MdePkg/Library/PeiMemoryAllocationLib/PeiMemoryAllocationLib.inf
-  PeiServicesTablePointerLib | MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
-  CacheMaintenanceLib | Platform/ARC/Library/CpuLib/CacheMaintenanceLib.inf
+#  HobLib | MdePkg/Library/PeiHobLib/PeiHobLib.inf
+
+  CacheMaintenanceLib | Platform/ARC/Library/CpuLib/CpuCache.inf
   CpuLib | Platform/ARC/Library/CpuLib/CpuLib.inf
 
-[Components.common.SEC]
-  Platform/ARC/Library/Sec/SecMain.inf
+[LibraryClasses.common.PEIM]
+  PeiServicesTablePointerLib | Platform/ARC/Library/PeiCore/PeiServicesTablePointerLib.inf
+  PeimEntryPoint | MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
 
-[Components.common.PEI_CORE]
+[LibraryClasses.common.DXE_CORE]
+  HobLib | MdePkg/Library/DxeCoreHobLib/DxeCoreHobLib.inf
+  DxeCoreEntryPoint | MdePkg/Library/DxeCoreEntryPoint/DxeCoreEntryPoint.inf
+  MemoryAllocationLib | MdeModulePkg/Library/DxeCoreMemoryAllocationLib/DxeCoreMemoryAllocationLib.inf
+  UefiDecompressLib | MdePkg/Library/BaseUefiDecompressLib/BaseUefiDecompressLib.inf
+  PerformanceLib | MdePkg/Library/BasePerformanceLibNull/BasePerformanceLibNull.inf
+  UefiLib | MdePkg/Library/UefiLib/UefiLib.inf
+  PeCoffLib | MdePkg/Library/BasePeCoffLib/BasePeCoffLib.inf
+  PeCoffGetEntryPointLib | MdePkg/Library/BasePeCoffGetEntryPointLib/BasePeCoffGetEntryPointLib.inf
+  PeCoffExtraActionLib | MdePkg/Library/BasePeCoffExtraActionLibNull/BasePeCoffExtraActionLibNull.inf
+  ExtractGuidedSectionLib | MdePkg/Library/DxeExtractGuidedSectionLib/DxeExtractGuidedSectionLib.inf
+  DevicePathLib | MdePkg/Library/UefiDevicePathLib/UefiDevicePathLib.inf
+  UefiRuntimeServicesTableLib | MdePkg/Library/UefiRuntimeServicesTableLib/UefiRuntimeServicesTableLib.inf
+  UefiBootServicesTableLib | MdePkg/Library/UefiBootServicesTableLib/UefiBootServicesTableLib.inf
+  ReportStatusCodeLib | MdePkg/Library/BaseReportStatusCodeLibNull/BaseReportStatusCodeLibNull.inf
+  DxeServicesLib | MdePkg/Library/DxeServicesLib/DxeServicesLib.inf
+  DebugAgentLib | MdeModulePkg/Library/DebugAgentLibNull/DebugAgentLibNull.inf
+  LocalApicLib | UefiCpuPkg/Library/BaseXApicLib/BaseXApicLib.inf
+  CcExitLib | UefiCpuPkg/Library/CcExitLibNull/CcExitLibNull.inf
+  TimerLib | MdePkg/Library/BaseTimerLibNullTemplate/BaseTimerLibNullTemplate.inf
+
+  CacheMaintenanceLib | Platform/ARC/Library/CpuLib/CpuCache.inf
+  CpuExceptionHandlerLib | Platform/ARC/Library/CpuLib/CpuException.inf
+  SynchronizationLib | Platform/ARC/Library/CpuLib/CpuSync.inf
+  CpuLib | Platform/ARC/Library/CpuLib/CpuLib.inf
+
+[Components]
+  # PEI
+  Platform/ARC/Library/Sec/SecMain.inf
   Platform/ARC/Library/PeiCore/PeiCore.inf
+  Platform/ARC/Library/PeiCore/DxeIpl.inf
+
+  # DXE
+  MdeModulePkg/Core/Dxe/DxeMain.inf

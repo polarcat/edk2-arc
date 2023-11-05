@@ -20,3 +20,6 @@
 
   gArcTokens.PcdPeiTemporaryRamBase|0|UINT32|5
   gArcTokens.PcdPeiTemporaryRamSize|0|UINT32|6
+
+  gArcTokens.PcdDxeFvBase|0|UINT64|7
+  gArcTokens.PcdDxeFvSize|0|UINT32|8

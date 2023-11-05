@@ -8,12 +8,17 @@
   Released under the BSD-2-Clause License
 **/
 
+#ifdef VERBOSE_FV_IO
+#undef VERBOSE
+#endif
+
 #include <UtilsLib.h>
+#include <IndustryStandard/PeImage.h>
 
 VOID
 ByteToAscii(
-  IN OUT CHAR8 Str[2],
-  IN UINT8 Byte
+  IN UINT8 Byte,
+  IN OUT CHAR8 Str[2]
   )
 {
   UINT8 Val;
@@ -45,42 +50,42 @@ Int32ToAscii(
 {
   Str->Data[0] = '0';
   Str->Data[1] = 'x';
-  ByteToAscii(&Str->Data[3], (Val >> 24) & 0xff);
-  ByteToAscii(&Str->Data[5], (Val >> 16) & 0xff);
-  ByteToAscii(&Str->Data[7], (Val >> 8) & 0xff);
-  ByteToAscii(&Str->Data[9], Val & 0xff);
+  ByteToAscii((Val >> 24) & 0xff, &Str->Data[3]);
+  ByteToAscii((Val >> 16) & 0xff, &Str->Data[5]);
+  ByteToAscii((Val >> 8) & 0xff, &Str->Data[7]);
+  ByteToAscii(Val & 0xff, &Str->Data[9]);
   Str->Data[11] = '\0';
 }
 
 VOID
 GuidToAsciiStr(
-  IN EFI_GUID *EfiGuid,
+  IN CONST EFI_GUID *EfiGuid,
   OUT GUID_STR *GuidStr
   )
 {
   UINT8 Idx1;
   UINT8 Idx2;
 
-  ByteToAscii(&GuidStr->Data[0], (EfiGuid->Data1 >> 24) & 0xff);
-  ByteToAscii(&GuidStr->Data[2], (EfiGuid->Data1 >> 16) & 0xff);
-  ByteToAscii(&GuidStr->Data[4], (EfiGuid->Data1 >> 8) & 0xff);
-  ByteToAscii(&GuidStr->Data[6], EfiGuid->Data1 & 0xff);
+  ByteToAscii((EfiGuid->Data1 >> 24) & 0xff, &GuidStr->Data[0]);
+  ByteToAscii((EfiGuid->Data1 >> 16) & 0xff, &GuidStr->Data[2]);
+  ByteToAscii((EfiGuid->Data1 >> 8) & 0xff, &GuidStr->Data[4]);
+  ByteToAscii(EfiGuid->Data1 & 0xff, &GuidStr->Data[6]);
   GuidStr->Data[8] = '-';
 
-  ByteToAscii(&GuidStr->Data[9], (EfiGuid->Data2 >> 8) & 0xff);
-  ByteToAscii(&GuidStr->Data[11], EfiGuid->Data2 & 0xff);
+  ByteToAscii((EfiGuid->Data2 >> 8) & 0xff, &GuidStr->Data[9]);
+  ByteToAscii(EfiGuid->Data2 & 0xff, &GuidStr->Data[11]);
   GuidStr->Data[13] = '-';
 
-  ByteToAscii(&GuidStr->Data[14], (EfiGuid->Data3 >> 8) & 0xff);
-  ByteToAscii(&GuidStr->Data[16], EfiGuid->Data3 & 0xff);
+  ByteToAscii((EfiGuid->Data3 >> 8) & 0xff, &GuidStr->Data[14]);
+  ByteToAscii(EfiGuid->Data3 & 0xff, &GuidStr->Data[16]);
   GuidStr->Data[18] = '-';
 
-  ByteToAscii(&GuidStr->Data[19], EfiGuid->Data4[0] & 0xff);
-  ByteToAscii(&GuidStr->Data[21], EfiGuid->Data4[1] & 0xff);
+  ByteToAscii(EfiGuid->Data4[0] & 0xff, &GuidStr->Data[19]);
+  ByteToAscii(EfiGuid->Data4[1] & 0xff, &GuidStr->Data[21]);
   GuidStr->Data[23] = '-';
 
   for (Idx1 = 2, Idx2 = 24; Idx2 < GUID_STR_MAX; Idx1++) {
-    ByteToAscii(&GuidStr->Data[Idx2], EfiGuid->Data4[Idx1]);
+    ByteToAscii(EfiGuid->Data4[Idx1], &GuidStr->Data[Idx2]);
     Idx2 += 2;
   }
 
@@ -127,4 +132,162 @@ StatusToAsciiStr(
   ELSE_IF_STATUS_EQ(Status, EFI_END_OF_MEDIA)
   ELSE_IF_STATUS_EQ(Status, EFI_END_OF_FILE)
   ELSE_STATUS("UNKNOWN STATUS")
+}
+
+BOOLEAN CompareGuids(
+  IN CONST EFI_GUID *Guid1,
+  IN CONST EFI_GUID *Guid2
+  )
+{
+    return ((UINT64 *) Guid1)[0] == ((UINT64 *) Guid2)[0] &&
+      ((UINT64 *) Guid1)[1] == ((UINT64 *) Guid2)[1];
+}
+
+VOID *
+ToVoidPtr(
+  IN EFI_PHYSICAL_ADDRESS Addr
+  )
+{
+  return (VOID *) (UINTN) Addr;
+}
+
+VOID *
+FindSection(
+  IN EFI_SECTION_TYPE SectionType,
+  IN EFI_PHYSICAL_ADDRESS SectionsAddr,
+  IN EFI_PHYSICAL_ADDRESS SectionsEnd,
+  OUT STATUS_INFO *StatusInfo OPTIONAL
+  )
+{
+  EFI_PHYSICAL_ADDRESS Addr; // Address iterator
+  EFI_COMMON_SECTION_HEADER *Section;
+  UINT32 Size;
+
+  Addr = (SectionsAddr + 3) & ~3ULL; // 4-byte aligned
+
+  while (Addr < SectionsEnd) {
+    Section = (EFI_COMMON_SECTION_HEADER *) (UINTN) Addr;
+    Size = SECTION_SIZE(Section);
+    LOG("Section %p size 0x%x type 0x%x\n", Section, Size, Section->Type);
+    if (Size < sizeof(*Section)) {
+      SET_STATUS_INFO(StatusInfo, EFI_VOLUME_CORRUPTED);
+      return NULL;
+    }
+
+    if (Addr + Size > SectionsEnd) {
+      SET_STATUS_INFO(StatusInfo, EFI_VOLUME_CORRUPTED);
+      return NULL;
+    }
+
+    if (Section->Type == SectionType) {
+        SET_STATUS_INFO(StatusInfo, EFI_SUCCESS);
+        return Section;
+    }
+
+    Addr += Size;
+  }
+
+  SET_STATUS_INFO(StatusInfo, EFI_NOT_FOUND);
+  return NULL;
+}
+
+VOID *
+GetFileSection(
+  IN VOID *FvBase,
+  IN EFI_SECTION_TYPE SectionType,
+  IN EFI_FV_FILETYPE FileType,
+  IN CONST EFI_GUID *FileName OPTIONAL,
+  OUT STATUS_INFO *StatusInfo OPTIONAL
+  )
+{
+  EFI_FIRMWARE_VOLUME_HEADER *Fv;
+  EFI_PHYSICAL_ADDRESS Addr; // Address iterator
+  EFI_PHYSICAL_ADDRESS Eov; // End of volume
+  EFI_PHYSICAL_ADDRESS Eof; // End of file
+  EFI_FFS_FILE_HEADER *File;
+  UINT32 Size;
+  GUID_STR GuidStr;
+  VOID *Image;
+  BOOLEAN FileNameOk;
+
+  Fv = (EFI_FIRMWARE_VOLUME_HEADER *) FvBase;
+  Eov = ToPhysAddr(Fv) + Fv->FvLength;
+  Addr = (ToPhysAddr(Fv) + Fv->HeaderLength + 7) & ~7ULL; // 8-byte aligned
+
+  while (Addr < Eov) {
+    File = (EFI_FFS_FILE_HEADER *) (UINTN) Addr;
+    Size = FFS_FILE_SIZE(File);
+    Eof = Addr + Size;
+
+    GuidToAsciiStr(&File->Name, &GuidStr);
+
+    LOG("Check file at %p type 0x%x name %a\n", File, File->Type, GuidStr.Data);
+
+    if (Eof > Eov) { // Sanity check
+      SET_STATUS_INFO(StatusInfo, EFI_VOLUME_CORRUPTED);
+      return NULL;
+    }
+
+    if (!FileName) {
+      FileNameOk = TRUE;
+    } else {
+      FileNameOk = CompareGuids(FileName, &File->Name);
+    }
+
+    if (FileNameOk && File->Type == FileType) {
+      return FindSection(SectionType, ToPhysAddr(File + 1), Eof, StatusInfo);
+    }
+
+    Addr = (Eof + 7) & ~7ULL;
+  }
+
+  SET_STATUS_INFO(StatusInfo, EFI_NOT_FOUND);
+  return NULL;
+}
+
+VOID *
+GetTeEntryPoint(
+  IN VOID *FvBase,
+  IN EFI_FV_FILETYPE FileType,
+  IN CONST EFI_GUID *FileName OPTIONAL,
+  OUT STATUS_INFO *StatusInfo OPTIONAL
+  )
+{
+  VOID *Ptr;
+  EFI_TE_IMAGE_HEADER *TeHdr;
+  VOID *Ep;
+
+  Ptr = GetFileSection(FvBase, EFI_SECTION_TE, FileType, FileName, StatusInfo);
+  if (Ptr == NULL) {
+    return NULL;
+  } else {
+    Ptr += sizeof(EFI_COMMON_SECTION_HEADER);
+    TeHdr = (EFI_TE_IMAGE_HEADER *) Ptr;
+    Ptr -= TeHdr->StrippedSize;
+    Ptr += sizeof(*TeHdr) + TeHdr->AddressOfEntryPoint & 0xffffffff;
+    return Ptr;
+  }
+}
+
+PEI_APRIORI_FILE_CONTENTS *
+GetAprioriFile(
+  IN VOID *FvBase,
+  OUT STATUS_INFO *StatusInfo OPTIONAL
+  )
+{
+  VOID *Ptr;
+  // PEI_APRIORI_FILE_NAME_GUID
+  CONST EFI_GUID FileName = {
+    0x1b45cc0a, 0x156a, 0x428a, {
+      0xaf, 0x62, 0x49, 0x86, 0x4d, 0xa0, 0xe6, 0xe6
+    }
+  };
+
+  Ptr = GetFileSection(FvBase, EFI_SECTION_RAW, EFI_FV_FILETYPE_FREEFORM,
+    &FileName, StatusInfo);
+  if (Ptr != NULL) {
+    Ptr += sizeof(EFI_COMMON_SECTION_HEADER);
+  }
+
+  return Ptr;
 }
