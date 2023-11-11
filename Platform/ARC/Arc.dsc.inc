@@ -19,7 +19,7 @@
   UtilsLib | Platform/ARC/Library/UtilsLib/UtilsLib.inf
 
 [LibraryClasses.common.PEI_CORE]
-  PeiServicesTablePointerLib | Platform/ARC/Library/PeiCore/PeiServicesTablePointerLib.inf
+  PeiServicesTablePointerLib | MdePkg/Library/PeiServicesTablePointerLib/PeiServicesTablePointerLib.inf
   PeiCoreEntryPoint | MdePkg/Library/PeiCoreEntryPoint/PeiCoreEntryPoint.inf
 #  HobLib | MdePkg/Library/PeiHobLib/PeiHobLib.inf
 
@@ -29,6 +29,7 @@
 [LibraryClasses.common.PEIM]
   PeiServicesTablePointerLib | Platform/ARC/Library/PeiCore/PeiServicesTablePointerLib.inf
   PeimEntryPoint | MdePkg/Library/PeimEntryPoint/PeimEntryPoint.inf
+  PeiServicesLib | MdePkg/Library/PeiServicesLib/PeiServicesLib.inf
 
 [LibraryClasses.common.DXE_CORE]
   HobLib | MdePkg/Library/DxeCoreHobLib/DxeCoreHobLib.inf

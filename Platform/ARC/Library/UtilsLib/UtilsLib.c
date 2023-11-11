@@ -163,12 +163,12 @@ FindSection(
   EFI_COMMON_SECTION_HEADER *Section;
   UINT32 Size;
 
-  Addr = (SectionsAddr + 3) & ~3ULL; // 4-byte aligned
+  Addr = AlignAddr(SectionsAddr, 4);
 
   while (Addr < SectionsEnd) {
     Section = (EFI_COMMON_SECTION_HEADER *) (UINTN) Addr;
     Size = SECTION_SIZE(Section);
-    LOG("Section %p size 0x%x type 0x%x\n", Section, Size, Section->Type);
+    DBG("| Section %p size 0x%x type 0x%x\n", Section, Size, Section->Type);
     if (Size < sizeof(*Section)) {
       SET_STATUS_INFO(StatusInfo, EFI_VOLUME_CORRUPTED);
       return NULL;
@@ -205,23 +205,20 @@ GetFileSection(
   EFI_PHYSICAL_ADDRESS Eov; // End of volume
   EFI_PHYSICAL_ADDRESS Eof; // End of file
   EFI_FFS_FILE_HEADER *File;
-  UINT32 Size;
   GUID_STR GuidStr;
   VOID *Image;
   BOOLEAN FileNameOk;
 
   Fv = (EFI_FIRMWARE_VOLUME_HEADER *) FvBase;
   Eov = ToPhysAddr(Fv) + Fv->FvLength;
-  Addr = (ToPhysAddr(Fv) + Fv->HeaderLength + 7) & ~7ULL; // 8-byte aligned
+  Addr = AlignAddr(ToPhysAddr(Fv) + Fv->HeaderLength, 8);
 
   while (Addr < Eov) {
     File = (EFI_FFS_FILE_HEADER *) (UINTN) Addr;
-    Size = FFS_FILE_SIZE(File);
-    Eof = Addr + Size;
+    Eof = Addr + FFS_FILE_SIZE(File);
 
     GuidToAsciiStr(&File->Name, &GuidStr);
-
-    LOG("Check file at %p type 0x%x name %a\n", File, File->Type, GuidStr.Data);
+    DBG("| Check file at %p type 0x%x name %a\n", File, File->Type, GuidStr.Data);
 
     if (Eof > Eov) { // Sanity check
       SET_STATUS_INFO(StatusInfo, EFI_VOLUME_CORRUPTED);
@@ -238,7 +235,7 @@ GetFileSection(
       return FindSection(SectionType, ToPhysAddr(File + 1), Eof, StatusInfo);
     }
 
-    Addr = (Eof + 7) & ~7ULL;
+    Addr = AlignAddr(Eof, 8);
   }
 
   SET_STATUS_INFO(StatusInfo, EFI_NOT_FOUND);
@@ -255,7 +252,6 @@ GetTeEntryPoint(
 {
   VOID *Ptr;
   EFI_TE_IMAGE_HEADER *TeHdr;
-  VOID *Ep;
 
   Ptr = GetFileSection(FvBase, EFI_SECTION_TE, FileType, FileName, StatusInfo);
   if (Ptr == NULL) {

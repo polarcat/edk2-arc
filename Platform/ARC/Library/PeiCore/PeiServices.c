@@ -10,8 +10,8 @@
   Released under the BSD-2-Clause License
 **/
 
+#include "PeiCoreMain.h"
 #include <Library/UtilsLib.h>
-#include <Core/Pei/PeiMain.h>
 
 //
 // TODO: Fixup caclulations should take PEIM's file name into account.
@@ -28,7 +28,7 @@ CalcPeimFixup(
 VOID
 FixupPpi(
   IN OUT EFI_PEI_PPI_DESCRIPTOR *PpiDesc,
-  UINT32 PeimFixup
+  UINT32                        PeimFixup
   )
 {
     EFI_DXE_IPL_PPI *Ppi;
@@ -36,6 +36,7 @@ FixupPpi(
     Ppi = (EFI_DXE_IPL_PPI *) (PpiDesc->Ppi + PeimFixup);
     PpiDesc->Ppi = Ppi;
     Ppi->Entry += PeimFixup;
+    PpiDesc->Guid = ((VOID *) PpiDesc->Guid) + PeimFixup;
 }
 
 #define IS_PIC_PPI(Flags)\
@@ -49,13 +50,13 @@ FixupPpi(
 EFI_STATUS
 EFIAPI
 PeiInstallPpi(
-  IN CONST EFI_PEI_SERVICES        **PeiServices,
-  IN CONST EFI_PEI_PPI_DESCRIPTOR  *PpiList
+  IN CONST EFI_PEI_SERVICES       **PeiServices,
+  IN CONST EFI_PEI_PPI_DESCRIPTOR *PpiList
   )
 {
   STATUS_INFO StatusInfo;
   UINT32 PeimFixup;
-  PEI_CORE_INSTANCE *PeiCore;
+  PEI_CORE_CONTEXT *PeiCoreCtx;
   PEI_PPI_LIST *PpiListPointer;
   UINTN Idx;
   UINTN LastCount;
@@ -64,17 +65,18 @@ PeiInstallPpi(
     return EFI_INVALID_PARAMETER;
   }
 
-  PeiCore = PEI_CORE_INSTANCE_FROM_PS_THIS(PeiServices);
-  PpiListPointer = &PeiCore->PpiData.PpiList;
+  PeiCoreCtx = PS_TO_PEI_CONTEXT_PTR(PeiServices);
+  PpiListPointer = &PeiCoreCtx->PpiData.PpiList;
   Idx = PpiListPointer->CurrentCount;
   LastCount = Idx;
 
-  if (Idx >= PeiCore->PpiData.PpiList.MaxCount) {
-    return EFI_OUT_OF_RESOURCES;
+  if (Idx >= PeiCoreCtx->PpiData.PpiList.MaxCount) {
+    return EFI_NOT_FOUND;
   }
 
+  DBG("> Request PPI desc %p PPI %p\n", PpiList, PpiList->Ppi);
+
   PeimFixup = 0;
-  LOG("> Request PPI desc %p PPI %p\n", PpiList, PpiList->Ppi);
   while (1) {
     if ((PpiList->Flags & EFI_PEI_PPI_DESCRIPTOR_PPI) == 0) {
       PpiListPointer->CurrentCount = LastCount;
@@ -87,7 +89,7 @@ PeiInstallPpi(
       if (StatusInfo.Status != EFI_SUCCESS) {
         goto err;
       }
-      LOG("| PEIM fixup 0x%x\n", PeimFixup);
+      DBG("| PEIM fixup 0x%x\n", PeimFixup);
     }
 
     PpiListPointer->PpiPtrs[Idx].Ppi = (EFI_PEI_PPI_DESCRIPTOR *) PpiList;
@@ -95,16 +97,18 @@ PeiInstallPpi(
 
     FixupPpi(PpiListPointer->PpiPtrs[Idx].Ppi, PeimFixup);
 
-    LOG("[%u/%u] Installed PPI %p entry %p\n", PpiListPointer->CurrentCount,
-      PpiListPointer->CurrentCount, PpiListPointer->PpiPtrs[Idx].Ppi->Ppi,
+    DBG("[%u/%u] Installed PPI %p GUID %g entry %p\n",
+      PpiListPointer->CurrentCount, PpiListPointer->CurrentCount,
+      PpiListPointer->PpiPtrs[Idx].Ppi->Ppi,
+      PpiListPointer->PpiPtrs[Idx].Ppi->Guid,
       ((EFI_DXE_IPL_PPI *) PpiListPointer->PpiPtrs[Idx].Ppi->Ppi)->Entry);
 
     if (IS_LAST_PPI(PpiList->Flags)) {
       break;
     }
 
-    if (++Idx >= PeiCore->PpiData.PpiList.MaxCount) {
-      StatusInfo.Status = EFI_OUT_OF_RESOURCES;
+    if (++Idx >= PeiCoreCtx->PpiData.PpiList.MaxCount) {
+      StatusInfo.Status = EFI_NOT_FOUND;
       goto err;
     }
 
@@ -125,32 +129,32 @@ err:
 EFI_STATUS
 EFIAPI
 PeiLocatePpi(
-  IN CONST EFI_PEI_SERVICES      **PeiServices,
-  IN CONST EFI_GUID              *Guid,
-  IN UINTN                       Instance,
-  IN OUT EFI_PEI_PPI_DESCRIPTOR  **PpiDescriptor,
-  IN OUT VOID                    **Ppi
+  IN CONST EFI_PEI_SERVICES     **PeiServices,
+  IN CONST EFI_GUID             *Guid,
+  IN UINTN                      Instance,
+  IN OUT EFI_PEI_PPI_DESCRIPTOR **PpiDescriptor,
+  IN OUT VOID                   **Ppi
   )
 {
   UINTN Idx;
   UINTN TmpInstance;
   EFI_GUID *TmpGuid;
   EFI_PEI_PPI_DESCRIPTOR *TmpPpiDesc;
-  PEI_CORE_INSTANCE *PeiCore;
+  PEI_CORE_CONTEXT *PeiCoreCtx;
 
-  if (PeiServices == NULL || Guid == NULL || Ppi == NULL) {
+  if (Guid == NULL || Ppi == NULL) {
     return EFI_INVALID_PARAMETER;
   }
 
-  PeiCore = PEI_CORE_INSTANCE_FROM_PS_THIS(PeiServices);
+  PeiCoreCtx = PS_TO_PEI_CONTEXT_PTR(PeiServices);
   TmpInstance = 0;
 
-  LOG("Available %u PPIs\n", PeiCore->PpiData.PpiList.CurrentCount);
+  DBG("> Available %u PPIs\n", PeiCoreCtx->PpiData.PpiList.CurrentCount);
 
-  for (Idx = 0; Idx < PeiCore->PpiData.PpiList.CurrentCount; Idx++) {
-    TmpPpiDesc = PeiCore->PpiData.PpiList.PpiPtrs[Idx].Ppi;
+  for (Idx = 0; Idx < PeiCoreCtx->PpiData.PpiList.CurrentCount; Idx++) {
+    TmpPpiDesc = PeiCoreCtx->PpiData.PpiList.PpiPtrs[Idx].Ppi;
 
-    LOG("Check PPI %u GUID %g ? %g\n", Idx, TmpPpiDesc->Guid, Guid);
+    DBG("| Check PPI %u GUID %g ? %g\n", Idx, TmpPpiDesc->Guid, Guid);
 
     if (!TmpPpiDesc) {
       continue;
@@ -180,4 +184,138 @@ PeiNotifyPpi (
   )
 {
   return EFI_UNSUPPORTED;
+}
+
+EFI_STATUS
+EFIAPI
+PeiFfsFindNextVolume(
+  IN CONST EFI_PEI_SERVICES **PeiServices,
+  IN UINTN                  Instance,
+  IN OUT EFI_PEI_FV_HANDLE  *VolumeHandle
+  )
+{
+  PEI_CORE_CONTEXT *PeiCoreCtx;
+
+  if (VolumeHandle == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  PeiCoreCtx = PS_TO_PEI_CONTEXT_PTR(PeiServices);
+  if (Instance < MAX_CORE_FV) {
+    *VolumeHandle = PeiCoreCtx->Fv[Instance].FvHandle;
+    return EFI_SUCCESS;
+  }
+
+  return EFI_NOT_FOUND;
+}
+
+EFI_STATUS
+EFIAPI
+PeiFfsFindNextFile(
+  IN CONST EFI_PEI_SERVICES   **PeiServices,
+  IN EFI_FV_FILETYPE          SearchType,
+  IN CONST EFI_PEI_FV_HANDLE  FvHandle,
+  IN OUT EFI_PEI_FILE_HANDLE  *FileHandle
+  )
+{
+  EFI_FIRMWARE_VOLUME_HEADER *Fv;
+  EFI_FFS_FILE_HEADER *File;
+  EFI_PHYSICAL_ADDRESS Addr; // Address iterator
+  EFI_PHYSICAL_ADDRESS Eov; // End of volume
+  EFI_PHYSICAL_ADDRESS Eof; // End of file
+  GUID_STR GuidStr;
+
+  if (FvHandle == NULL || FileHandle == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  Fv = (EFI_FIRMWARE_VOLUME_HEADER *) FvHandle;
+  Eov = ToPhysAddr(Fv) + Fv->FvLength;
+
+  if (*FileHandle == NULL) {
+    Addr = AlignAddr(ToPhysAddr(Fv) + Fv->HeaderLength, 8);
+  } else {
+    // Get next file address
+    File = (EFI_FFS_FILE_HEADER *) (UINTN) *FileHandle;
+    Addr = AlignAddr(Addr + FFS_FILE_SIZE(File), 8);
+  }
+
+  while (Addr < Eov) {
+    File = (EFI_FFS_FILE_HEADER *) (UINTN) Addr;
+    Eof = Addr + FFS_FILE_SIZE(File);
+
+    GuidToAsciiStr(&File->Name, &GuidStr);
+    DBG("| Check file at %p type 0x%x name %a\n", File, File->Type, GuidStr.Data);
+
+    if (Eof > Eov) { // Sanity check
+      return EFI_VOLUME_CORRUPTED;
+    }
+
+    if (File->Type == SearchType) {
+      *FileHandle = File;
+      return EFI_SUCCESS;
+    }
+
+    Addr = AlignAddr(Eof, 8);
+  }
+
+  return EFI_NOT_FOUND;
+}
+
+EFI_STATUS
+EFIAPI
+PeiFfsFindSectionData(
+  IN CONST EFI_PEI_SERVICES **PeiServices,
+  IN EFI_SECTION_TYPE       SectionType,
+  IN EFI_PEI_FILE_HANDLE    FileHandle,
+  OUT VOID                  **SectionData
+  )
+{
+  STATUS_INFO StatusInfo;
+  EFI_FFS_FILE_HEADER *File;
+  EFI_PHYSICAL_ADDRESS Eof; // End of file
+
+  if (FileHandle == NULL || SectionData == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  File = (EFI_FFS_FILE_HEADER *) (UINTN) FileHandle;
+  Eof = ToPhysAddr(FileHandle) + FFS_FILE_SIZE(File);
+
+  *SectionData = FindSection(SectionType, ToPhysAddr(File + 1), Eof, &StatusInfo);
+  if (StatusInfo.Status != EFI_SUCCESS) {
+    LOG("Failed to find section, %a, line %u\n",
+      StatusToAsciiStr(StatusInfo.Status), StatusInfo.Line);
+  }
+
+  return StatusInfo.Status;
+}
+
+EFI_STATUS
+EFIAPI
+PeiFfsGetFileInfo(
+  IN EFI_PEI_FILE_HANDLE  FileHandle,
+  OUT EFI_FV_FILE_INFO    *FileInfo
+  )
+{
+  EFI_FFS_FILE_HEADER *File;
+
+  if (FileHandle == NULL || FileInfo == NULL) {
+    return EFI_INVALID_PARAMETER;
+  }
+
+  if (IS_FFS_FILE2(File)) {
+    return EFI_UNSUPPORTED;
+  }
+
+  File = (EFI_FFS_FILE_HEADER *) FileHandle;
+
+  CopyMem(&FileInfo->FileName.Data1, &File->Name, sizeof(FileInfo->FileName));
+
+  FileInfo->FileType = File->Type;
+  FileInfo->FileAttributes = File->Attributes;
+  FileInfo->Buffer = (VOID *) File + sizeof(EFI_FFS_FILE_HEADER);
+  FileInfo->BufferSize = FFS_FILE_SIZE(File) - sizeof(EFI_FFS_FILE_HEADER);
+
+  return EFI_SUCCESS;
 }

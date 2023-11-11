@@ -8,20 +8,21 @@
   Released under the BSD-2-Clause License
 **/
 
+#include "PeiCoreMain.h"
 #include <Library/UtilsLib.h>
 #include <Library/BaseLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
-#include <Core/Pei/PeiMain.h>
 
 #ifndef MAX_PEI_PPIS
 #define MAX_PEI_PPIS 256
 #endif
 
+#define MAX_CORE_FV 2
+
 PEI_PPI_LIST_POINTERS mPpiListPool[MAX_PEI_PPIS];
 
-PEI_CORE_INSTANCE gPeiCoreInstance = {
-  .Signature = PEI_CORE_HANDLE_SIGNATURE,
-  .ServiceTableShadow = {
+PEI_CORE_CONTEXT mPeiCoreCtx = {
+  .Ps = {
     .Hdr = {
       .Signature = PEI_SERVICES_SIGNATURE,
       .Revision = PEI_SERVICES_REVISION,
@@ -29,10 +30,13 @@ PEI_CORE_INSTANCE gPeiCoreInstance = {
       .CRC32 = 0,
       .Reserved = 0,
     },
-
     .InstallPpi = PeiInstallPpi,
     .LocatePpi = PeiLocatePpi,
     .NotifyPpi = PeiNotifyPpi,
+    .FfsFindNextVolume = PeiFfsFindNextVolume,
+    .FfsFindNextFile = PeiFfsFindNextFile,
+    .FfsFindSectionData = PeiFfsFindSectionData,
+    .FfsGetFileInfo = PeiFfsGetFileInfo,
   },
   .PpiData.PpiList = {
     .CurrentCount = 0,
@@ -42,6 +46,26 @@ PEI_CORE_INSTANCE gPeiCoreInstance = {
   },
 };
 
+STATIC UINT32 mPeiFixup;
+
+inline
+EFI_FIRMWARE_VOLUME_HEADER *
+VoidToFvHdr(
+  VOID *Ptr
+  )
+{
+  return (EFI_FIRMWARE_VOLUME_HEADER *) Ptr;
+}
+
+inline
+EFI_FIRMWARE_VOLUME_HEADER *
+IntToFvHdr(
+  UINTN Int
+  )
+{
+  return (EFI_FIRMWARE_VOLUME_HEADER *) Int;
+}
+
 UINT32
 CalcPeiFixup(
   IN VOID *FvBase
@@ -49,6 +73,16 @@ CalcPeiFixup(
 {
   return (UINT32) GetFileSection(FvBase, EFI_SECTION_FREEFORM_SUBTYPE_GUID,
     EFI_FV_FILETYPE_PEI_CORE, NULL, NULL);
+}
+
+PEI_CORE_CONTEXT *
+GetCorePeiInstance(
+  IN CONST EFI_PEI_SERVICES **PeiServices
+  )
+{
+  //VOID *Ptr = PEI_CORE_INSTANCE_FROM_PS_THIS(PeiServices);
+  //return (PEI_CORE_INSTANCE *) (Ptr + mPeiFixup);
+  return &mPeiCoreCtx;
 }
 
 #define GET_ENTRY_POINT(FileName)\
@@ -68,7 +102,7 @@ InitPeims(
   AprioriFile = GetAprioriFile(FvBase, &StatusInfo);
   if (AprioriFile == NULL) {
     LOG("Failed to find apriori file, %a | %u\n",
-      StatusToAsciiStr(StatusInfo.Status), StatusInfo.SourceCodeLine);
+      StatusToAsciiStr(StatusInfo.Status), StatusInfo.Line);
     return;
   }
 
@@ -76,14 +110,14 @@ InitPeims(
   // TODO: Handle all GUIDs from apriori file
   //
   FileName = &AprioriFile->FileNamesWithinVolume[0];
-  LOG("PEIM %g\n", FileName);
+  DBG("> Handle PEIM file %g\n", FileName);
 
   PeimInit = GET_ENTRY_POINT(FileName);
   if (PeimInit != NULL) {
-    LOG("Init PEIM at %p, %a | %u\n", PeimInit,
-      StatusToAsciiStr(StatusInfo.Status), StatusInfo.SourceCodeLine);
-    Status = PeimInit(NULL, (CONST EFI_PEI_SERVICES **) &gPeiCoreInstance.Ps);
-    LOG("| Status %a\n", StatusToAsciiStr(Status));
+    DBG("| Call PEIM's init at %p, %a | %u\n", PeimInit,
+      StatusToAsciiStr(StatusInfo.Status), StatusInfo.Line);
+    Status = PeimInit(NULL, (CONST EFI_PEI_SERVICES **) &mPeiCoreCtx.PsPtr);
+    DBG("| Status %a\n", StatusToAsciiStr(Status));
   }
 }
 
@@ -93,19 +127,20 @@ DispatchPeims(VOID)
   EFI_STATUS Status;
   UINTN Idx;
   EFI_PEI_PPI_DESCRIPTOR *TmpPpiDesc;
-  EFI_DXE_IPL_ENTRY Entry;
   CONST EFI_DXE_IPL_PPI *Ppi;
-  EFI_PEI_HOB_POINTERS HobPtrs;
+  EFI_PEI_HOB_POINTERS HobList;
 
-  LOG("Available %u PPIs\n", gPeiCoreInstance.PpiData.PpiList.CurrentCount);
+  DBG("Available %u PPIs\n", mPeiCoreCtx.PpiData.PpiList.CurrentCount);
 
-  for (Idx = 0; Idx < gPeiCoreInstance.PpiData.PpiList.CurrentCount; Idx++) {
-    TmpPpiDesc = gPeiCoreInstance.PpiData.PpiList.PpiPtrs[Idx].Ppi;
+  // TODO: make sure DXE IPL called last
+
+  for (Idx = 0; Idx < mPeiCoreCtx.PpiData.PpiList.CurrentCount; Idx++) {
+    TmpPpiDesc = mPeiCoreCtx.PpiData.PpiList.PpiPtrs[Idx].Ppi;
 
     Ppi = TmpPpiDesc->Ppi;
-    LOG("Run PPI %u GUID %g entry %p\n", Idx, TmpPpiDesc->Guid, Ppi->Entry);
-    Status = Ppi->Entry(TmpPpiDesc->Ppi, &gPeiCoreInstance.Ps, HobPtrs);
-    LOG("| Status %a\n", StatusToAsciiStr(Status));
+    DBG("[%u] Run PPI GUID %g entry %p\n", Idx, TmpPpiDesc->Guid, Ppi->Entry);
+    Status = Ppi->Entry(TmpPpiDesc->Ppi, &mPeiCoreCtx.PsPtr, HobList);
+    DBG("| Status %a\n", StatusToAsciiStr(Status));
   }
 }
 
@@ -134,35 +169,39 @@ PeiCoreMain(
   IN VOID                           *Data OPTIONAL
   )
 {
-  UINT32 PeiFixup;
+  VOID *TmpPtr;
   EFI_STATUS Status;
   EFI_DXE_IPL_PPI DxeIpl;
 
-  PeiFixup = CalcPeiFixup(SecCoreData->BootFirmwareVolumeBase);
+  mPeiFixup = CalcPeiFixup(SecCoreData->BootFirmwareVolumeBase);
 
-  LOG("Enter PEI CORE, instance %p, fixup 0x%x\n", &gPeiCoreInstance, PeiFixup);
+  LOG("Enter PEI CORE, instance %p, fixup 0x%x\n", &mPeiCoreCtx, mPeiFixup);
 
-  gPeiCoreInstance.Ps = &gPeiCoreInstance.ServiceTableShadow;
+  mPeiCoreCtx.PsPtr = &mPeiCoreCtx.Ps;
 
   //
   // Fix up addresses of PEI services
   //
-  gPeiCoreInstance.Ps->InstallPpi += PeiFixup;
-  gPeiCoreInstance.Ps->LocatePpi += PeiFixup;
-  gPeiCoreInstance.Ps->NotifyPpi += PeiFixup;
+  mPeiCoreCtx.PsPtr->InstallPpi += mPeiFixup;
+  mPeiCoreCtx.PsPtr->LocatePpi += mPeiFixup;
+  mPeiCoreCtx.PsPtr->NotifyPpi += mPeiFixup;
+  mPeiCoreCtx.PsPtr->FfsFindNextVolume += mPeiFixup;
+  mPeiCoreCtx.PsPtr->FfsFindNextFile += mPeiFixup;
+  mPeiCoreCtx.PsPtr->FfsFindSectionData += mPeiFixup;
+  mPeiCoreCtx.PsPtr->FfsGetFileInfo += mPeiFixup;
 
-  SetPeiServicesTablePointer((CONST EFI_PEI_SERVICES **) &gPeiCoreInstance.Ps);
+  //
+  // Fill in BOOT and DXE FV info
+  //
+  mPeiCoreCtx.Fv[0].FvHeader = VoidToFvHdr(SecCoreData->BootFirmwareVolumeBase);
+  mPeiCoreCtx.Fv[0].FvHandle = (VOID *) mPeiCoreCtx.Fv[0].FvHeader;
+
+  mPeiCoreCtx.Fv[1].FvHeader = IntToFvHdr(FixedPcdGet32(PcdDxeFvBase));
+  mPeiCoreCtx.Fv[1].FvHandle = (VOID *) mPeiCoreCtx.Fv[1].FvHeader;
+
+  SetPeiServicesTablePointer((CONST EFI_PEI_SERVICES **) &mPeiCoreCtx.PsPtr);
   InitPeims(SecCoreData->BootFirmwareVolumeBase);
   DispatchPeims();
 
-#if 0
-  Status = PeiLocatePpi((CONST EFI_PEI_SERVICES **) &gPeiCoreInstance.Ps,
-    &gEfiDxeIplPpiGuid, 0, NULL, (VOID **) &DxeIpl);
-  if (Status != EFI_SUCCESS) {
-    LOG("Failed to locate DXE IPL service, %a\n", StatusToAsciiStr(Status));
-  } else {
-    LOG("DXE IPL entry %p\n", DxeIpl);
-  }
-#endif
   CpuDeadLoop();
 }

@@ -25,3 +25,4 @@
 
 [FixedPcd]
   gArcTokens.PcdBootFvBase
+  gArcTokens.PcdDxeFvBase

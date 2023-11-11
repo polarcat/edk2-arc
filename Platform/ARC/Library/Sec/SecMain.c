@@ -54,9 +54,8 @@ SecMain(VOID)
   CopyMem(&BootFv, (VOID *) &BootFvHdr, BootFvHdr.HeaderLength);
 
   SerialRegisterBase = SerialPortInitialize();
-  LOG("Enter SEC\n");
+  LOG("Enter SEC, boot FV addr %p size %u\n", &BootFv, BootFv.HeaderLength);
 
-  LOG("Boot FV addr %p size %u\n", &BootFv, BootFv.HeaderLength);
   if (BootFv.Signature != EFI_FVH_SIGNATURE) {
     LOG("Bad FV signature at 0x%x\n", BootFv.Signature);
     goto halt;
@@ -67,7 +66,7 @@ SecMain(VOID)
     goto halt;
   }
 
-  LOG("Boot FV at %p\n", &BootFv);
+  DBG("Boot FV at %p\n", &BootFv);
   ZeroMem(&SecData, sizeof(SecData));
 
   SecData.DataSize = sizeof(EFI_SEC_PEI_HAND_OFF);
@@ -78,7 +77,7 @@ SecMain(VOID)
     EFI_FV_FILETYPE_PEI_CORE, NULL, &StatusInfo);
   if (PeiEp == NULL) {
     LOG("Failed to find PEI core entry point | Status '%a' %u\n",
-      StatusToAsciiStr(StatusInfo.Status), StatusInfo.SourceCodeLine);
+      StatusToAsciiStr(StatusInfo.Status), StatusInfo.Line);
     goto halt;
   }
 

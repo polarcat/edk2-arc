@@ -29,6 +29,11 @@
   UINT8 StrLen_ = AsciiSPrint(Str_, sizeof(Str_), __VA_ARGS__);\
   SerialPortWrite(Str_, StrLen_);\
 }
+#else
+#define LOG(...) ;
+#endif
+
+#ifdef DEBUG
 #define LOG_ENTER() {\
   CHAR8 Str_[MAX_STR_LEN];\
   UINT8 StrLen_ = AsciiSPrint(Str_, sizeof(Str_), "Enter %a:%d | %a\n",\
@@ -41,21 +46,22 @@
     __func__, __LINE__, __FILE__);\
   SerialPortWrite(Str_, StrLen_);\
 }
+#define DBG LOG
 #else
-#define LOG(...) ;
 #define LOG_ENTER() ;
 #define LOG_EXIT() ;
+#define DBG(...) ;
 #endif
 
 typedef struct {
   EFI_STATUS Status;
-  UINT32 SourceCodeLine;
+  UINT32 Line; // Source code line
 } STATUS_INFO;
 
 #define SET_STATUS_INFO(StatusInfoPtr, Val) {\
   if ((StatusInfoPtr) != NULL) {\
     (StatusInfoPtr)->Status = Val;\
-    (StatusInfoPtr)->SourceCodeLine = __LINE__;\
+    (StatusInfoPtr)->Line = __LINE__;\
   }\
 }
 
@@ -107,6 +113,14 @@ BOOLEAN CompareGuids(
   );
 
 VOID *
+FindSection(
+  IN EFI_SECTION_TYPE SectionType,
+  IN EFI_PHYSICAL_ADDRESS SectionsAddr,
+  IN EFI_PHYSICAL_ADDRESS SectionsEnd,
+  OUT STATUS_INFO *StatusInfo OPTIONAL
+  );
+
+VOID *
 GetFileSection(
   IN VOID *FvBase,
   IN EFI_SECTION_TYPE SectionType,
@@ -128,5 +142,16 @@ GetAprioriFile(
   IN VOID *FvBase,
   OUT STATUS_INFO *StatusInfo OPTIONAL
   );
+
+inline
+EFI_PHYSICAL_ADDRESS
+AlignAddr(
+  IN EFI_PHYSICAL_ADDRESS Addr,
+  IN UINT8 Bytes
+  )
+{
+  Bytes--;
+  return (Addr + (Bytes)) & ~Bytes;
+}
 
 #endif // UTILS_LIB_H_
